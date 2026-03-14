@@ -8,6 +8,7 @@ import {
   type InterviewCallbacks,
 } from '@/services/interviewOrchestrator'
 import type { Agent, InterviewMessage, InterviewResult, InterviewStatus } from '@/types'
+import { chat } from '@/services/llm'
 import AgentSidebar from '@/components/AgentSidebar'
 import InterviewChatPanel from '@/components/InterviewChatPanel'
 
@@ -138,6 +139,53 @@ export default function DeptInterviewPage() {
     await orchestratorRef.current.endInterview()
   }, [])
 
+  const handleGenerateAnswer = useCallback(async (): Promise<string> => {
+    const interviewMessages = useInterviewStore.getState().messages
+    const conversationText = interviewMessages
+      .map((m) => {
+        if (m.type === 'user_answer') return `[候选人]: ${m.content}`
+        if (m.type === 'interviewer_question') return `[${m.agentName}(${m.agentRole})]: ${m.content}`
+        return `[系统]: ${m.content}`
+      })
+      .join('\n')
+
+    const lastQuestion = [...interviewMessages]
+      .reverse()
+      .find((m) => m.type === 'interviewer_question')
+
+    const systemPrompt = `你是一位求职者的面试回答助手。你需要根据候选人的简历、自我介绍以及面试对话记录，为候选人生成一个针对最新问题的高质量回答。
+
+要求：
+- 以第一人称回答，语气自然专业，像真实面试中的口语表达
+- 紧密结合简历中的真实经历和技能来回答
+- 回答要有条理，重点突出，不要太长（150-300字为宜）
+- 不要编造简历中没有的经历
+- 直接输出回答内容，不要加任何前缀或说明`
+
+    const userMessage = `## 我的简历
+${userProfile.resume}
+
+## 我的自我介绍
+${userProfile.selfIntroduction}
+
+## 应聘岗位
+${userProfile.targetPosition || '未指定'}
+
+## 面试对话记录
+${conversationText}
+
+## 当前需要回答的问题
+${lastQuestion?.content ?? '（未找到问题）'}
+
+请为我生成一个合适的回答。`
+
+    return await chat(apiConfig, {
+      systemPrompt,
+      userMessage,
+      maxTokens: 800,
+    })
+  }, [apiConfig, userProfile])
+
   useEffect(() => {
     if (!isConfigured || !hasGmResult) return
     if (interviewStatus === 'idle' && !runningRef.current) {
@@ -239,6 +287,7 @@ export default function DeptInterviewPage() {
           speakingAgent={speakingAgent}
           onSendAnswer={handleSendAnswer}
           onEndInterview={handleEndInterview}
+          onGenerateAnswer={handleGenerateAnswer}
         />
 
         {interviewStatus === 'finished' && interviewResult && (

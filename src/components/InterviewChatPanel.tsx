@@ -9,6 +9,7 @@ interface Props {
   speakingAgent: Agent | null
   onSendAnswer: (answer: string) => void
   onEndInterview: () => void
+  onGenerateAnswer?: () => Promise<string>
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -91,8 +92,10 @@ export default function InterviewChatPanel({
   speakingAgent,
   onSendAnswer,
   onEndInterview,
+  onGenerateAnswer,
 }: Props) {
   const [inputText, setInputText] = useState('')
+  const [generating, setGenerating] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -129,6 +132,28 @@ export default function InterviewChatPanel({
   function handleVoiceTranscribed(text: string) {
     setInputText((prev) => (prev ? prev + ' ' + text : text))
     inputRef.current?.focus()
+  }
+
+  async function handleGenerate() {
+    if (!onGenerateAnswer || generating || !isWaiting) return
+    setGenerating(true)
+    try {
+      const answer = await onGenerateAnswer()
+      if (answer) {
+        setInputText(answer)
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.style.height = 'auto'
+            inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 128) + 'px'
+            inputRef.current.focus()
+          }
+        }, 0)
+      }
+    } catch {
+      // error handled by caller
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -216,6 +241,39 @@ export default function InterviewChatPanel({
       {/* Input Area */}
       {status !== 'finished' && (
         <div className="px-4 py-3 bg-white border-t border-slate-200">
+          {onGenerateAnswer && isWaiting && (
+            <div className="mb-2">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={generating}
+                className={`
+                  inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                  ${generating
+                    ? 'bg-purple-100 text-purple-400 cursor-wait'
+                    : 'bg-purple-50 text-purple-600 hover:bg-purple-100 active:scale-95'
+                  }
+                `}
+              >
+                {generating ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    AI 正在思考...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    AI 生成回答
+                  </>
+                )}
+              </button>
+            </div>
+          )}
           <form
             onSubmit={handleSubmit}
             className="flex items-end gap-2"
@@ -230,13 +288,13 @@ export default function InterviewChatPanel({
                   ? '输入你的回答...（Enter 发送，Shift+Enter 换行）'
                   : '等待面试官提问...'
               }
-              disabled={!isWaiting}
+              disabled={!isWaiting || generating}
               rows={1}
               className={`
                 flex-1 resize-none rounded-xl border px-4 py-2.5 text-sm
                 transition-colors min-h-[42px] max-h-32
                 ${
-                  isWaiting
+                  isWaiting && !generating
                     ? 'border-slate-300 bg-white text-slate-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
                     : 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
                 }
@@ -256,17 +314,17 @@ export default function InterviewChatPanel({
             <VoiceInput
               onTranscribed={handleVoiceTranscribed}
               onError={(err) => console.error('Voice error:', err)}
-              disabled={!isWaiting}
+              disabled={!isWaiting || generating}
             />
 
             <button
               type="submit"
-              disabled={!isWaiting || !inputText.trim()}
+              disabled={!isWaiting || !inputText.trim() || generating}
               className={`
                 shrink-0 w-11 h-11 rounded-full flex items-center justify-center
                 transition-all duration-200
                 ${
-                  isWaiting && inputText.trim()
+                  isWaiting && inputText.trim() && !generating
                     ? 'bg-blue-500 text-white hover:bg-blue-600 active:scale-95'
                     : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                 }
