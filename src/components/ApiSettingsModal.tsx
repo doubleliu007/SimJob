@@ -40,6 +40,18 @@ export default function ApiSettingsModal({ onClose }: Props) {
           </button>
         </div>
 
+        <button
+          onClick={() => {
+            setBaseUrl('https://api.vectorengine.ai/v1')
+            setApiKey('sk-axnhJ2AA1NsDkDb178OI2Ddr4oX170GXtpq3yQPppEW52M9T')
+            setModel('claude-sonnet-4-6')
+            setTestResult(null)
+          }}
+          className="w-full mb-4 py-2.5 rounded-lg text-sm font-medium border-2 border-dashed border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:border-amber-400 transition-colors"
+        >
+          🎁 一键填入试用配置
+        </button>
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
