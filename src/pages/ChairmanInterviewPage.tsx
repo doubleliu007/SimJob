@@ -277,7 +277,7 @@ ${lastQuestion?.content ?? '（未找到问题）'}
   }
 
   return (
-    <div className="flex h-[calc(100vh-56px)] md:h-[calc(100vh-64px)]">
+    <div className="flex h-full overflow-hidden">
       {errorDetail && chairmanStatus === 'error' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
@@ -334,7 +334,7 @@ ${lastQuestion?.content ?? '（未找到问题）'}
         />
 
         {chairmanStatus === 'finished' && chairmanResult && (
-          <div className="px-3 py-3 md:px-6 md:py-4 bg-white border-t border-slate-200">
+          <div className="shrink-0 px-3 py-3 md:px-6 md:py-4 bg-white border-t border-slate-200 pb-safe">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <span
                 className={`text-sm font-semibold ${
@@ -364,7 +364,7 @@ ${lastQuestion?.content ?? '（未找到问题）'}
         )}
 
         {chairmanStatus === 'error' && (
-          <div className="px-3 py-3 md:px-6 md:py-4 bg-white border-t border-slate-200">
+          <div className="shrink-0 px-3 py-3 md:px-6 md:py-4 bg-white border-t border-slate-200 pb-safe">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <span className="text-sm text-red-600">
                 发生错误

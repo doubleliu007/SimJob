@@ -14,8 +14,8 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <nav className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-50">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-blue-50 overflow-hidden">
+      <nav className="bg-white/80 backdrop-blur-sm border-b border-slate-200 shrink-0 z-50">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-14 md:h-16">
             <Link
@@ -78,7 +78,7 @@ export default function Layout() {
           </div>
         )}
       </nav>
-      <main>
+      <main className="flex-1 overflow-hidden">
         <Outlet />
       </main>
     </div>

@@ -132,6 +132,7 @@ export default function InterviewChatPanel({
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
+      handleSubmit()
     }
   }
 
@@ -159,7 +160,7 @@ export default function InterviewChatPanel({
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-3 md:px-6 py-2.5 md:py-3 bg-white/60 border-b border-slate-200">
+      <div className="shrink-0 flex items-center justify-between px-3 md:px-6 py-2.5 md:py-3 bg-white/60 border-b border-slate-200">
         <div className="flex items-center gap-2">
           {isRunning && status !== 'waiting_for_user' && (
             <span className="relative flex h-2.5 w-2.5">
@@ -240,7 +241,7 @@ export default function InterviewChatPanel({
 
       {/* Input Area */}
       {status !== 'finished' && (
-        <div className="px-4 py-3 bg-white border-t border-slate-200">
+        <div className="shrink-0 px-4 py-3 bg-white border-t border-slate-200 pb-safe">
           {onGenerateAnswer && isWaiting && (
             <div className="mb-2">
               <button
@@ -292,7 +293,7 @@ export default function InterviewChatPanel({
               rows={1}
               className={`
                 flex-1 resize-none rounded-xl border px-4 py-2.5 text-sm
-                transition-colors min-h-[42px] max-h-[50vh] overflow-hidden
+                transition-colors min-h-[42px] max-h-[120px] md:max-h-[200px] overflow-hidden
                 ${
                   isWaiting && !generating
                     ? 'border-slate-300 bg-white text-slate-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'

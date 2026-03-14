@@ -26,7 +26,7 @@ const FEATURES = [
 
 export default function HomePage() {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 md:py-16">
+    <div className="h-full overflow-y-auto"><div className="max-w-6xl mx-auto px-4 py-8 md:py-16">
       <div className="text-center mb-10 md:mb-16">
         <h1 className="text-3xl md:text-5xl font-bold text-slate-800 mb-3 md:mb-4">
           SimJob
@@ -83,6 +83,6 @@ export default function HomePage() {
           <span>纯前端运行，数据不上传服务器。需自备 OpenAI 兼容 API。</span>
         </div>
       </div>
-    </div>
+    </div></div>
   )
 }

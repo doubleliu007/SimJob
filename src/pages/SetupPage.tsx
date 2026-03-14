@@ -64,7 +64,7 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 md:py-10">
+    <div className="h-full overflow-y-auto"><div className="max-w-3xl mx-auto px-4 py-6 md:py-10">
       <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">准备你的面试材料</h1>
       <p className="text-sm md:text-base text-slate-500 mb-6 md:mb-8">
         填写简历和自我介绍，选择目标公司类型，然后开始模拟面试之旅
@@ -204,6 +204,6 @@ export default function SetupPage() {
       {showApiModal && (
         <ApiSettingsModal onClose={() => setShowApiModal(false)} />
       )}
-    </div>
+    </div></div>
   )
 }
