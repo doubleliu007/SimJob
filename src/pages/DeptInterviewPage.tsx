@@ -11,6 +11,25 @@ import type { Agent, InterviewMessage, InterviewResult, InterviewStatus } from '
 import AgentSidebar from '@/components/AgentSidebar'
 import InterviewChatPanel from '@/components/InterviewChatPanel'
 
+function MobileAgentToggle({ onClick, agentCount }: { onClick: () => void; agentCount: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className="md:hidden fixed left-3 bottom-20 z-30 w-11 h-11 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center text-slate-600 active:scale-95 transition-transform"
+      aria-label="查看面试官"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      {agentCount > 0 && (
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          {agentCount}
+        </span>
+      )}
+    </button>
+  )
+}
+
 export default function DeptInterviewPage() {
   const navigate = useNavigate()
   const { apiConfig, userProfile, discussionResult } = useStore()
@@ -31,6 +50,7 @@ export default function DeptInterviewPage() {
 
   const [speakingAgent, setSpeakingAgent] = useState<Agent | null>(null)
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const orchestratorRef = useRef<InterviewOrchestrator | null>(null)
   const runningRef = useRef(false)
 
@@ -166,7 +186,7 @@ export default function DeptInterviewPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-56px)] md:h-[calc(100vh-64px)]">
       {errorDetail && interviewStatus === 'error' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
@@ -206,7 +226,11 @@ export default function DeptInterviewPage() {
         agents={agents}
         currentSpeakerId={currentSpeakerId}
         moderatorId={null}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
       />
+
+      <MobileAgentToggle onClick={() => setSidebarOpen(true)} agentCount={agents.length} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <InterviewChatPanel
@@ -218,8 +242,8 @@ export default function DeptInterviewPage() {
         />
 
         {interviewStatus === 'finished' && interviewResult && (
-          <div className="px-6 py-4 bg-white border-t border-slate-200">
-            <div className="flex items-center justify-between">
+          <div className="px-3 py-3 md:px-6 md:py-4 bg-white border-t border-slate-200">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <span
                 className={`text-sm font-semibold ${
                   interviewResult.passed ? 'text-green-600' : 'text-red-600'
@@ -229,16 +253,16 @@ export default function DeptInterviewPage() {
                   ? '🎉 恭喜！面试通过'
                   : '😔 很遗憾，未能通过面试'}
               </span>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2 md:gap-3">
                 <button
                   onClick={startInterview}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 md:px-5 md:py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   重新面试
                 </button>
                 <button
                   onClick={() => navigate('/setup')}
-                  className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                  className="px-4 py-2 md:px-5 md:py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
                 >
                   返回设置
                 </button>
@@ -248,8 +272,8 @@ export default function DeptInterviewPage() {
         )}
 
         {interviewStatus === 'error' && (
-          <div className="px-6 py-4 bg-white border-t border-slate-200">
-            <div className="flex items-center justify-between">
+          <div className="px-3 py-3 md:px-6 md:py-4 bg-white border-t border-slate-200">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <span className="text-sm text-red-600">
                 发生错误
                 {errorDetail && (
@@ -263,7 +287,7 @@ export default function DeptInterviewPage() {
               </span>
               <button
                 onClick={startInterview}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 md:px-5 md:py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
               >
                 重新开始
               </button>

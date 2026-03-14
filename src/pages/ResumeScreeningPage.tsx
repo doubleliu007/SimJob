@@ -9,6 +9,25 @@ import DiscussionPanel from '@/components/DiscussionPanel'
 import { downloadText, formatDiscussionText } from '@/utils/exportDiscussion'
 import { saveToStorage } from '@/utils/storage'
 
+function MobileAgentToggle({ onClick, agentCount }: { onClick: () => void; agentCount: number }) {
+  return (
+    <button
+      onClick={onClick}
+      className="md:hidden fixed left-3 bottom-20 z-30 w-11 h-11 rounded-full bg-white border border-slate-200 shadow-lg flex items-center justify-center text-slate-600 active:scale-95 transition-transform"
+      aria-label="查看参会人员"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      {agentCount > 0 && (
+        <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+          {agentCount}
+        </span>
+      )}
+    </button>
+  )
+}
+
 export default function ResumeScreeningPage() {
   const navigate = useNavigate()
   const {
@@ -36,6 +55,7 @@ export default function ResumeScreeningPage() {
     suggestions: string
   } | null>(null)
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const stopRef = useRef(false)
   const runningRef = useRef(false)
 
@@ -175,7 +195,7 @@ export default function ResumeScreeningPage() {
     discussionStatus !== 'error'
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-56px)] md:h-[calc(100vh-64px)]">
       {errorDetail && discussionStatus === 'error' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden">
@@ -217,7 +237,11 @@ export default function ResumeScreeningPage() {
         agents={agents}
         currentSpeakerId={currentSpeakerId}
         moderatorId={moderatorId}
+        mobileOpen={sidebarOpen}
+        onMobileClose={() => setSidebarOpen(false)}
       />
+
+      <MobileAgentToggle onClick={() => setSidebarOpen(true)} agentCount={agents.length} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <DiscussionPanel
@@ -227,8 +251,8 @@ export default function ResumeScreeningPage() {
         />
 
         {/* Bottom Actions */}
-        <div className="px-6 py-4 bg-white border-t border-slate-200">
-          <div className="flex items-center justify-between">
+        <div className="px-3 py-3 md:px-6 md:py-4 bg-white border-t border-slate-200">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="text-sm text-slate-500">
               {discussionStatus === 'finished' && result && (
                 <span
@@ -255,11 +279,11 @@ export default function ResumeScreeningPage() {
                 </span>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3">
               {isRunning && (
                 <button
                   onClick={handleStop}
-                  className="px-5 py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
+                  className="px-4 py-2 md:px-5 md:py-2.5 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors"
                 >
                   结束讨论
                 </button>
@@ -268,7 +292,7 @@ export default function ResumeScreeningPage() {
                 discussionStatus === 'error') && (
                 <button
                   onClick={startDiscussion}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 md:px-5 md:py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                 >
                   重新开始
                 </button>
@@ -278,20 +302,20 @@ export default function ResumeScreeningPage() {
                   {result?.passed && (
                     <button
                       onClick={() => navigate('/dept-interview')}
-                      className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                      className="px-4 py-2 md:px-5 md:py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
                     >
                       进入部门面试
                     </button>
                   )}
                   <button
                     onClick={handleExport}
-                    className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
+                    className="px-4 py-2 md:px-5 md:py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"
                   >
-                    导出会议记录
+                    导出记录
                   </button>
                   <button
                     onClick={() => navigate('/setup')}
-                    className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                    className="px-4 py-2 md:px-5 md:py-2.5 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
                   >
                     修改简历
                   </button>

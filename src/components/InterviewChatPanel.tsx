@@ -134,7 +134,7 @@ export default function InterviewChatPanel({
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Status Bar */}
-      <div className="flex items-center justify-between px-6 py-3 bg-white/60 border-b border-slate-200">
+      <div className="flex items-center justify-between px-3 md:px-6 py-2.5 md:py-3 bg-white/60 border-b border-slate-200">
         <div className="flex items-center gap-2">
           {isRunning && status !== 'waiting_for_user' && (
             <span className="relative flex h-2.5 w-2.5">
@@ -167,7 +167,7 @@ export default function InterviewChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 bg-slate-50/50">
+      <div className="flex-1 overflow-y-auto px-3 md:px-6 py-3 md:py-4 bg-slate-50/50">
         {messages.length === 0 && status === 'idle' && (
           <div className="flex items-center justify-center h-full text-slate-400 text-sm">
             面试尚未开始

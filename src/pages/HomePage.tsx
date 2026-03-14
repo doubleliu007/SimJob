@@ -26,24 +26,24 @@ const FEATURES = [
 
 export default function HomePage() {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-16">
-      <div className="text-center mb-16">
-        <h1 className="text-5xl font-bold text-slate-800 mb-4">
+    <div className="max-w-6xl mx-auto px-4 py-8 md:py-16">
+      <div className="text-center mb-10 md:mb-16">
+        <h1 className="text-3xl md:text-5xl font-bold text-slate-800 mb-3 md:mb-4">
           SimJob
         </h1>
-        <p className="text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
           你的简历递上去之后，会议室里发生了什么？
         </p>
-        <p className="text-sm text-slate-400 mt-3">
+        <p className="text-xs md:text-sm text-slate-400 mt-2 md:mt-3">
           AI 还原真实招聘场景——五个性格各异的面试官，一场你看不见的内部讨论
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10 md:mb-16">
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className={`relative rounded-2xl border p-8 transition-all ${
+            className={`relative rounded-2xl border p-6 md:p-8 transition-all ${
               f.available
                 ? 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer'
                 : 'bg-slate-50 border-slate-200 opacity-60'
@@ -54,11 +54,11 @@ export default function HomePage() {
                 即将开放
               </span>
             )}
-            <div className="text-4xl mb-4">{f.icon}</div>
+            <div className="text-3xl md:text-4xl mb-3 md:mb-4">{f.icon}</div>
             <h3 className="text-lg font-semibold text-slate-800 mb-2">
               {f.title}
             </h3>
-            <p className="text-sm text-slate-500 leading-relaxed mb-6">
+            <p className="text-sm text-slate-500 leading-relaxed mb-4 md:mb-6">
               {f.description}
             </p>
             {f.available ? (
@@ -78,9 +78,9 @@ export default function HomePage() {
       </div>
 
       <div className="text-center">
-        <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-2 rounded-lg">
+        <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg">
           <span>⚡</span>
-          <span>纯前端运行，你的数据不会上传到任何服务器。需要自备 OpenAI 兼容 API。</span>
+          <span>纯前端运行，数据不上传服务器。需自备 OpenAI 兼容 API。</span>
         </div>
       </div>
     </div>
