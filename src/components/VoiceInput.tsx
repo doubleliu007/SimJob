@@ -19,144 +19,95 @@ export default function VoiceInput({
   const [state, setState] = useState<RecordingState>('idle')
   const [duration, setDuration] = useState(0)
   const [supported, setSupported] = useState(true)
-  const [dragCancel, setDragCancel] = useState(false)
 
   const recognizerRef = useRef<VoiceRecognizer | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const startYRef = useRef(0)
   const accumulatedRef = useRef('')
+  const wantRecordingRef = useRef(false)
+  const callbacksRef = useRef({ onTranscribed, onInterim, onError })
+
+  useEffect(() => {
+    callbacksRef.current = { onTranscribed, onInterim, onError }
+  }, [onTranscribed, onInterim, onError])
 
   useEffect(() => {
     setSupported(VoiceRecognizer.isSupported())
   }, [])
 
-  const stopListening = useCallback(() => {
+  const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
+  }, [])
+
+  const resetState = useCallback(() => {
+    wantRecordingRef.current = false
+    clearTimer()
     recognizerRef.current?.stop()
     recognizerRef.current = null
     setState('idle')
     setDuration(0)
-  }, [])
+  }, [clearTimer])
 
-  const startListening = useCallback(
-    (startY: number) => {
-      if (disabled || state !== 'idle') return
+  const createRecognizer = useCallback(() => {
+    const recognizer = new VoiceRecognizer()
+    recognizerRef.current = recognizer
 
-      startYRef.current = startY
-      setDragCancel(false)
-      accumulatedRef.current = ''
+    recognizer.start({
+      onResult: (text, isFinal) => {
+        if (isFinal) {
+          accumulatedRef.current += text
+          callbacksRef.current.onTranscribed(accumulatedRef.current)
+          accumulatedRef.current = ''
+        } else {
+          callbacksRef.current.onInterim?.(accumulatedRef.current + text)
+        }
+      },
+      onError: (err) => {
+        resetState()
+        callbacksRef.current.onError(err)
+      },
+      onEnd: () => {
+        if (wantRecordingRef.current) {
+          createRecognizer()
+          return
+        }
+        clearTimer()
+        recognizerRef.current = null
+        setState('idle')
+        setDuration(0)
+      },
+    })
+  }, [resetState, clearTimer])
 
-      const recognizer = new VoiceRecognizer()
-      recognizerRef.current = recognizer
+  const startListening = useCallback(() => {
+    if (disabled) return
 
-      recognizer.start({
-        onResult: (text, isFinal) => {
-          if (isFinal) {
-            accumulatedRef.current += text
-            onTranscribed(accumulatedRef.current)
-            accumulatedRef.current = ''
-          } else {
-            onInterim?.(accumulatedRef.current + text)
-          }
-        },
-        onError: (err) => {
-          stopListening()
-          onError(err)
-        },
-        onEnd: () => {
-          stopListening()
-        },
-      })
+    accumulatedRef.current = ''
+    wantRecordingRef.current = true
 
-      setState('recording')
-      setDuration(0)
-      timerRef.current = setInterval(() => {
-        setDuration((d) => d + 1)
-      }, 1000)
-    },
-    [disabled, state, onTranscribed, onInterim, onError, stopListening]
-  )
+    createRecognizer()
 
-  const handleStop = useCallback(() => {
-    if (state !== 'recording') return
+    setState('recording')
+    setDuration(0)
+    timerRef.current = setInterval(() => {
+      setDuration((d) => d + 1)
+    }, 1000)
+  }, [disabled, createRecognizer])
 
-    if (dragCancel) {
-      recognizerRef.current?.abort()
-      recognizerRef.current = null
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-      setState('idle')
-      setDuration(0)
-      accumulatedRef.current = ''
-      return
+  const handleClick = useCallback(() => {
+    if (disabled) return
+    if (state === 'recording') {
+      resetState()
+    } else {
+      startListening()
     }
-
-    stopListening()
-  }, [state, dragCancel, stopListening])
-
-  const handleMove = useCallback(
-    (clientY: number) => {
-      if (state !== 'recording') return
-      const diff = startYRef.current - clientY
-      setDragCancel(diff > 50)
-    },
-    [state]
-  )
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      startListening(e.clientY)
-    },
-    [startListening]
-  )
-
-  const handleMouseUp = useCallback(() => {
-    if (state === 'recording') handleStop()
-  }, [state, handleStop])
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => handleMove(e.clientY),
-    [handleMove]
-  )
-
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      e.preventDefault()
-      startListening(e.touches[0].clientY)
-    },
-    [startListening]
-  )
-
-  const handleTouchEnd = useCallback(() => {
-    if (state === 'recording') handleStop()
-  }, [state, handleStop])
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => handleMove(e.touches[0].clientY),
-    [handleMove]
-  )
-
-  useEffect(() => {
-    if (state !== 'recording') return
-
-    const handleGlobalUp = () => handleStop()
-    window.addEventListener('mouseup', handleGlobalUp)
-    window.addEventListener('touchend', handleGlobalUp)
-
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalUp)
-      window.removeEventListener('touchend', handleGlobalUp)
-    }
-  }, [state, handleStop])
+  }, [disabled, state, resetState, startListening])
 
   useEffect(() => {
     return () => {
+      wantRecordingRef.current = false
       recognizerRef.current?.abort()
       if (timerRef.current) clearInterval(timerRef.current)
     }
@@ -171,46 +122,45 @@ export default function VoiceInput({
     <div className="relative">
       {state === 'recording' && (
         <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
-          {dragCancel ? (
-            <span className="text-red-400">松开取消</span>
-          ) : (
-            <span>上滑取消 · {formatDuration(duration)}</span>
-          )}
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            录音中 · {formatDuration(duration)}
+          </span>
           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45" />
         </div>
       )}
 
       <button
         type="button"
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchMove={handleTouchMove}
+        onClick={handleClick}
         disabled={disabled}
         className={`
           relative w-11 h-11 rounded-full flex items-center justify-center
-          transition-all duration-200 select-none touch-none
+          transition-all duration-200 select-none
           ${
             state === 'recording'
-              ? dragCancel
-                ? 'bg-red-500 text-white scale-125'
-                : 'bg-blue-500 text-white scale-125'
-              : 'bg-slate-100 text-slate-500 hover:bg-slate-200 active:bg-blue-500 active:text-white'
+              ? 'bg-red-500 text-white scale-110'
+              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
           }
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
+        title={state === 'recording' ? '点击结束录音' : '点击开始录音'}
       >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-        </svg>
+        {state === 'recording' ? (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <rect x="6" y="6" width="12" height="12" rx="2" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+          </svg>
+        )}
 
-        {state === 'recording' && !dragCancel && (
+        {state === 'recording' && (
           <>
-            <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-30" />
-            <span className="absolute inset-[-4px] rounded-full border-2 border-blue-300 animate-pulse" />
+            <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-20" />
+            <span className="absolute inset-[-4px] rounded-full border-2 border-red-300 animate-pulse" />
           </>
         )}
       </button>

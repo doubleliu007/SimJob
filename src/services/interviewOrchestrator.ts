@@ -149,7 +149,7 @@ export class InterviewOrchestrator {
       const openingContent = await chat(apiConfig, {
         systemPrompt,
         userMessage: userMsg,
-        maxTokens: 300,
+        maxTokens: 512,
       })
 
       const openingMsg = createInterviewMessage(
@@ -228,7 +228,7 @@ export class InterviewOrchestrator {
       const questionContent = await chat(this.apiConfig, {
         systemPrompt,
         userMessage: questionUserMsg,
-        maxTokens: 300,
+        maxTokens: 512,
       })
 
       const questionMsg = createInterviewMessage(
@@ -263,7 +263,7 @@ export class InterviewOrchestrator {
     return await chat(this.apiConfig, {
       systemPrompt,
       userMessage,
-      maxTokens: 400,
+      maxTokens: 600,
     })
   }
 
@@ -314,7 +314,7 @@ export class InterviewOrchestrator {
       const evalContent = await chat(this.apiConfig, {
         systemPrompt,
         userMessage: evalUserMsg,
-        maxTokens: 300,
+        maxTokens: 800,
       })
 
       evaluations.push({
@@ -354,7 +354,7 @@ export class InterviewOrchestrator {
     const summaryContent = await chat(this.apiConfig, {
       systemPrompt: summarySystemPrompt,
       userMessage: summaryUserMsg,
-      maxTokens: 500,
+      maxTokens: 1024,
     })
 
     const summaryMsg = createInterviewMessage(

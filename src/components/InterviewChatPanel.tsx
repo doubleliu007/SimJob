@@ -115,6 +115,13 @@ export default function InterviewChatPanel({
     }
   }, [isWaiting])
 
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [inputText])
+
   function handleSubmit(e?: FormEvent) {
     e?.preventDefault()
     if (!inputText.trim() || !isWaiting) return
@@ -141,13 +148,7 @@ export default function InterviewChatPanel({
       const answer = await onGenerateAnswer()
       if (answer) {
         setInputText(answer)
-        setTimeout(() => {
-          if (inputRef.current) {
-            inputRef.current.style.height = 'auto'
-            inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 128) + 'px'
-            inputRef.current.focus()
-          }
-        }, 0)
+        inputRef.current?.focus()
       }
     } catch {
       // error handled by caller
@@ -292,7 +293,7 @@ export default function InterviewChatPanel({
               rows={1}
               className={`
                 flex-1 resize-none rounded-xl border px-4 py-2.5 text-sm
-                transition-colors min-h-[42px] max-h-32
+                transition-colors min-h-[42px] max-h-[50vh] overflow-hidden
                 ${
                   isWaiting && !generating
                     ? 'border-slate-300 bg-white text-slate-800 focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
@@ -300,15 +301,6 @@ export default function InterviewChatPanel({
                 }
                 outline-none
               `}
-              style={{
-                height: 'auto',
-                minHeight: '42px',
-              }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement
-                target.style.height = 'auto'
-                target.style.height = Math.min(target.scrollHeight, 128) + 'px'
-              }}
             />
 
             <VoiceInput

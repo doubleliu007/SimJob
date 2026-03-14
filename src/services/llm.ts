@@ -58,7 +58,7 @@ export async function chat(
     model: config.model,
     messages,
     temperature: 0.9,
-    max_tokens: request.maxTokens ?? 500,
+    max_tokens: request.maxTokens ?? 1024,
   })
 
   return response.choices[0]?.message?.content?.trim() ?? ''

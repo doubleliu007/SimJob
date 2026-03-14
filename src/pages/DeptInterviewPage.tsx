@@ -182,7 +182,7 @@ ${lastQuestion?.content ?? '（未找到问题）'}
     return await chat(apiConfig, {
       systemPrompt,
       userMessage,
-      maxTokens: 800,
+      maxTokens: 1024,
     })
   }, [apiConfig, userProfile])
 

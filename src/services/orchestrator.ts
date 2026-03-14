@@ -105,7 +105,7 @@ export async function runDiscussion(
     const context = await chat(apiConfig, {
       systemPrompt,
       userMessage,
-      maxTokens: 400,
+      maxTokens: 600,
     })
     return context
   }
@@ -178,7 +178,7 @@ export async function runDiscussion(
     for (const agent of ordered) {
       if (callbacks.shouldStop()) break
       const userMsg = buildFirstRoundUserMessage(agent, userProfile, agents, allMessages)
-      await agentSpeak(agent, userMsg, 'first_round')
+      await agentSpeak(agent, userMsg, 'first_round', 1024)
     }
 
     if (callbacks.shouldStop()) {
@@ -233,7 +233,7 @@ export async function runDiscussion(
         allMessages,
         topic
       )
-      await agentSpeak(nextAgent, userMsg, 'free_discussion')
+      await agentSpeak(nextAgent, userMsg, 'free_discussion', 1024)
       lastSpeaker = nextAgent
     }
 
@@ -249,7 +249,7 @@ export async function runDiscussion(
     const gms = getGeneralManagers(agents)
     const summaryGM = gms[0]
     const summaryMsg = buildSummaryUserMessage(summaryGM, allMessages)
-    const summaryResult = await agentSpeak(summaryGM, summaryMsg, 'summary', 1500)
+    const summaryResult = await agentSpeak(summaryGM, summaryMsg, 'summary', 2048)
 
     const passed = parsePassed(summaryResult.content)
 
@@ -257,7 +257,7 @@ export async function runDiscussion(
     callbacks.onPhaseChange('suggestion')
     const seniorHR = getSeniorHR(agents) ?? agents.find((a) => a.role === 'hr')!
     const hrMsg = buildHRSuggestionUserMessage(seniorHR, userProfile, allMessages)
-    const hrResult = await agentSpeak(seniorHR, hrMsg, 'suggestion', 2000)
+    const hrResult = await agentSpeak(seniorHR, hrMsg, 'suggestion', 2048)
 
     // onFinished is called only AFTER both summary and HR suggestion are complete
     callbacks.onFinished(passed, summaryResult.content, hrResult.content)
