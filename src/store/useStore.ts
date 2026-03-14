@@ -42,10 +42,13 @@ const storedProfile = loadFromStorage<Partial<UserProfile>>('userProfile')
 const defaultUserProfile: UserProfile = {
   resume: '',
   selfIntroduction: '',
+  targetPosition: '',
   companyType: '',
   companyName: '',
   ...storedProfile,
 }
+
+const storedDiscussionResult = loadFromStorage<DiscussionResult>('discussionResult')
 
 export const useStore = create<AppState>((set, get) => ({
   apiConfig: defaultApiConfig,
@@ -53,7 +56,7 @@ export const useStore = create<AppState>((set, get) => ({
   agents: [],
   messages: [],
   discussionStatus: 'idle',
-  discussionResult: null,
+  discussionResult: storedDiscussionResult ?? null,
   moderatorId: null,
   currentSpeakerId: null,
   error: null,

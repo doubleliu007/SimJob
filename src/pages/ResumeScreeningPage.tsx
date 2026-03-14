@@ -7,6 +7,7 @@ import type { Agent, ChatMessage, DiscussionPhase } from '@/types'
 import AgentSidebar from '@/components/AgentSidebar'
 import DiscussionPanel from '@/components/DiscussionPanel'
 import { downloadText, formatDiscussionText } from '@/utils/exportDiscussion'
+import { saveToStorage } from '@/utils/storage'
 
 export default function ResumeScreeningPage() {
   const navigate = useNavigate()
@@ -74,6 +75,9 @@ export default function ResumeScreeningPage() {
             suggestion: 'suggesting',
           }
           setDiscussionStatus(statusMap[phase] ?? 'free_discussion')
+        },
+        onCompanyContext: (companyContext: string) => {
+          saveToStorage('companyContext', companyContext)
         },
         onModeratorSelected: (agent: Agent) => {
           setModeratorId(agent.id)
@@ -271,6 +275,14 @@ export default function ResumeScreeningPage() {
               )}
               {discussionStatus === 'finished' && (
                 <>
+                  {result?.passed && (
+                    <button
+                      onClick={() => navigate('/dept-interview')}
+                      className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                    >
+                      进入部门面试
+                    </button>
+                  )}
                   <button
                     onClick={handleExport}
                     className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors"

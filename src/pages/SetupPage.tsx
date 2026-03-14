@@ -38,6 +38,7 @@ export default function SetupPage() {
 
   const [resume, setResume] = useState(userProfile.resume)
   const [selfIntro, setSelfIntro] = useState(userProfile.selfIntroduction)
+  const [targetPosition, setTargetPosition] = useState(userProfile.targetPosition ?? '')
   const [companyType, setCompanyType] = useState(
     userProfile.companyType || COMPANY_TYPES[0].value
   )
@@ -55,6 +56,7 @@ export default function SetupPage() {
     setUserProfile({
       resume,
       selfIntroduction: selfIntro,
+      targetPosition,
       companyType,
       companyName: finalCompanyName,
     })
@@ -127,6 +129,23 @@ export default function SetupPage() {
         <p className="mt-1 text-xs text-slate-400">
           {selfIntro.length} 字
         </p>
+      </div>
+
+      {/* Target Position */}
+      <div className="mb-6">
+        <label className="block text-sm font-semibold text-slate-700 mb-2">
+          目标岗位
+          <span className="ml-2 text-xs font-normal text-slate-400">
+            选填，如：前端开发工程师、产品经理、数据分析师
+          </span>
+        </label>
+        <input
+          type="text"
+          className="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          placeholder="请输入你应聘的岗位名称"
+          value={targetPosition}
+          onChange={(e) => setTargetPosition(e.target.value)}
+        />
       </div>
 
       {/* Company Type */}

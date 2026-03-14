@@ -46,6 +46,7 @@ export interface ChatMessage {
 export interface UserProfile {
   resume: string
   selfIntroduction: string
+  targetPosition: string
   companyType: string
   companyName: string
 }
@@ -74,3 +75,58 @@ export type DiscussionStatus =
   | 'suggesting'
   | 'finished'
   | 'error'
+
+// ===== 部门面试相关类型 =====
+
+export type InterviewMessageType =
+  | 'interviewer_question'
+  | 'user_answer'
+  | 'system_notice'
+
+export type InterviewPhase =
+  | 'opening'
+  | 'questioning'
+  | 'waiting_for_user'
+  | 'evaluating'
+  | 'finished'
+
+export interface InterviewMessage {
+  id: string
+  type: InterviewMessageType
+  agentId?: string
+  agentName?: string
+  agentRole?: string
+  agentPersonality?: string
+  personalityType?: PersonalityType
+  agentAvatar?: string
+  content: string
+  phase: InterviewPhase
+  timestamp: number
+}
+
+export type InterviewStatus =
+  | 'idle'
+  | 'generating_agents'
+  | 'opening'
+  | 'questioning'
+  | 'waiting_for_user'
+  | 'moderator_deciding'
+  | 'evaluating'
+  | 'finished'
+  | 'error'
+
+export interface InterviewEvaluation {
+  agentId: string
+  agentName: string
+  agentRole: string
+  content: string
+}
+
+export interface InterviewResult {
+  passed: boolean
+  evaluations: InterviewEvaluation[]
+  finalSummary: string
+  messages: InterviewMessage[]
+  agents: Agent[]
+  userProfile: UserProfile
+}

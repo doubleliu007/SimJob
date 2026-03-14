@@ -13,7 +13,7 @@ const FEATURES = [
     description: '通过简历关只是开始。部门主管会从专业深度和团队匹配两个维度，拆解你的每一段经历。',
     icon: '💼',
     path: '/dept-interview',
-    available: false,
+    available: true,
   },
   {
     title: '终面',

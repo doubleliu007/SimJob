@@ -69,7 +69,7 @@ ${userProfile.resume}
 候选人的自我介绍：
 ${userProfile.selfIntroduction}
 
-候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）。
+候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）${userProfile.targetPosition ? `，目标岗位是「${userProfile.targetPosition}」` : ''}。
 ${prevSection}
 第一轮，每人说说对这份简历的第一印象。轮到你了${agent.name}，从你${agent.roleLabel}的角度，结合公司的实际业务和需求说说看法。直接说，不用自我介绍。`
 }
