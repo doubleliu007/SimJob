@@ -132,7 +132,6 @@ export default function InterviewChatPanel({
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit()
     }
   }
 
@@ -286,7 +285,7 @@ export default function InterviewChatPanel({
               onKeyDown={handleKeyDown}
               placeholder={
                 isWaiting
-                  ? '输入你的回答...（Enter 发送，Shift+Enter 换行）'
+                  ? '输入你的回答...'
                   : '等待面试官提问...'
               }
               disabled={!isWaiting || generating}
