@@ -87,6 +87,61 @@ export function getRandomModerator(agents: Agent[]): Agent {
   return pickRandom(gms)
 }
 
+export function generateChairmanAgents(): Agent[] {
+  const agents: Agent[] = []
+  const usedSurnames = new Set<string>()
+  const shuffledSurnames = shuffle(SURNAMES)
+  let surnameIndex = 0
+
+  function getNextSurname(): string {
+    while (surnameIndex < shuffledSurnames.length) {
+      const s = shuffledSurnames[surnameIndex++]
+      if (!usedSurnames.has(s)) {
+        usedSurnames.add(s)
+        return s
+      }
+    }
+    return SURNAMES[Math.floor(Math.random() * SURNAMES.length)]
+  }
+
+  const chairmanRoles: Array<{
+    role: 'chairman' | 'vp'
+    label: string
+    avatar: string
+  }> = [
+    { role: 'chairman', label: '董事长', avatar: '🏛️' },
+    { role: 'vp', label: '副总裁', avatar: '👔' },
+  ]
+
+  const shuffledPersonalities = shuffle(PERSONALITY_CONFIGS)
+  const usedPersonalities = new Set<PersonalityType>()
+
+  for (let i = 0; i < chairmanRoles.length; i++) {
+    const config = chairmanRoles[i]
+    let personality = shuffledPersonalities[i % shuffledPersonalities.length]
+    if (usedPersonalities.has(personality.type)) {
+      personality = shuffledPersonalities.find(
+        (p) => !usedPersonalities.has(p.type)
+      )!
+    }
+    usedPersonalities.add(personality.type)
+
+    const surname = getNextSurname()
+
+    agents.push({
+      id: `chairman_${config.role}_${i}`,
+      name: `${surname}${config.label}`,
+      role: config.role,
+      personality: personality.type,
+      roleLabel: config.label,
+      personalityLabel: personality.label,
+      avatar: config.avatar,
+    })
+  }
+
+  return agents
+}
+
 export function generateInterviewAgents(): Agent[] {
   const agents: Agent[] = []
   const usedSurnames = new Set<string>()

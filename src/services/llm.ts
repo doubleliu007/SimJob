@@ -61,7 +61,13 @@ export async function chat(
     max_tokens: request.maxTokens ?? 1024,
   })
 
-  return response.choices[0]?.message?.content?.trim() ?? ''
+  const content = response.choices?.[0]?.message?.content?.trim()
+  if (!content) {
+    throw new Error(
+      `API 返回了空响应或格式异常。原始响应：${JSON.stringify(response).slice(0, 500)}`
+    )
+  }
+  return content
 }
 
 export async function testConnection(config: ApiConfig): Promise<boolean> {

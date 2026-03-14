@@ -20,7 +20,7 @@ const FEATURES = [
     description: '最后一关，和决策层面对面。能力已经不是问题，他们想知道的是——你这个人，值不值得押注。',
     icon: '🏛️',
     path: '/chairman-interview',
-    available: false,
+    available: true,
   },
 ]
 

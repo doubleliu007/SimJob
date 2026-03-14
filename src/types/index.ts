@@ -2,6 +2,8 @@ export type RoleType =
   | 'general_manager'
   | 'hr'
   | 'dept_head'
+  | 'chairman'
+  | 'vp'
 
 export type PersonalityType =
   | 'gentle'
@@ -124,6 +126,19 @@ export interface InterviewEvaluation {
 
 export interface InterviewResult {
   passed: boolean
+  evaluations: InterviewEvaluation[]
+  finalSummary: string
+  messages: InterviewMessage[]
+  agents: Agent[]
+  userProfile: UserProfile
+}
+
+// ===== 终面（董事长面）相关类型 =====
+
+export type ChairmanInterviewStatus = InterviewStatus
+
+export interface ChairmanInterviewResult {
+  offerGranted: boolean
   evaluations: InterviewEvaluation[]
   finalSummary: string
   messages: InterviewMessage[]
