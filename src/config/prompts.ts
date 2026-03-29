@@ -19,6 +19,26 @@ function agentRoster(agents: Agent[], excludeId?: string): string {
     .join('、')
 }
 
+export function formatJDSection(jobDescription: string): string {
+  if (!jobDescription) return ''
+  return `\n该岗位的职位描述（JD）：\n${jobDescription}\n`
+}
+
+export function buildJobDescriptionPrompt(
+  targetPosition: string,
+  companyName: string,
+  companyType: string
+): { systemPrompt: string; userMessage: string } {
+  return {
+    systemPrompt: '你是一个招聘助手。请根据岗位和公司信息，生成一份简洁的职位描述。用中文回答。',
+    userMessage: `请为「${companyName}」（${companyType}行业）的「${targetPosition || '综合岗位'}」生成一份简短的职位描述（JD），包括：
+1. 岗位职责（3-4条）
+2. 任职要求（3-4条）
+
+要求简洁，总共不超过150字，不要分段标题，直接用短句列出。`,
+  }
+}
+
 export function buildCompanyContextPrompt(
   companyName: string,
   companyType: string
@@ -69,7 +89,7 @@ ${userProfile.resume}
 候选人的自我介绍：
 ${userProfile.selfIntroduction}
 
-候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）${userProfile.targetPosition ? `，目标岗位是「${userProfile.targetPosition}」` : ''}。
+候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）${userProfile.targetPosition ? `，目标岗位是「${userProfile.targetPosition}」` : ''}。${formatJDSection(userProfile.jobDescription)}
 ${prevSection}
 第一轮，每人说说对这份简历的第一印象。轮到你了${agent.name}，从你${agent.roleLabel}的角度，结合公司的实际业务和需求说说看法。直接说，不用自我介绍。`
 }
@@ -170,7 +190,7 @@ ${userProfile.resume}
 
 候选人原始自我介绍：
 ${userProfile.selfIntroduction}
-
+${formatJDSection(userProfile.jobDescription)}
 ${agent.name}，刚才会上大家提了不少意见。你来给这位候选人出一份简历和自我介绍的优化建议：
 1. 简历哪些地方要改？怎么改？
 2. 自我介绍哪里可以更好？

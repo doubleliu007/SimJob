@@ -1,5 +1,6 @@
 import type { Agent, InterviewMessage, UserProfile } from '@/types'
 import { PERSONALITY_MAP } from './personalities'
+import { formatJDSection } from './prompts'
 
 function getPersonalityDesc(agent: Agent): string {
   return PERSONALITY_MAP.get(agent.personality)?.description ?? ''
@@ -58,8 +59,7 @@ export function buildChairmanOpeningMessage(
 ): string {
   return `终面开始了。你是这场面试的副总裁。在场的有：${interviewerRoster(agents)}。
 
-候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）${userProfile.targetPosition ? `的「${userProfile.targetPosition}」岗位` : ''}。
-
+候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）${userProfile.targetPosition ? `的「${userProfile.targetPosition}」岗位` : ''}。${formatJDSection(userProfile.jobDescription)}
 之前各轮面试的情况：
 ${previousResults}
 
@@ -158,8 +158,7 @@ export function buildChairmanEvaluationPrompt(
   return `以下是完整的终面对话记录：
 ${history}
 
-候选人应聘的岗位：${userProfile.targetPosition || '未指定'}
-
+候选人应聘的岗位：${userProfile.targetPosition || '未指定'}${formatJDSection(userProfile.jobDescription)}
 之前各轮面试的评价：
 ${previousResults}
 

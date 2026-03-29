@@ -49,6 +49,7 @@ export interface UserProfile {
   resume: string
   selfIntroduction: string
   targetPosition: string
+  jobDescription: string
   companyType: string
   companyName: string
 }

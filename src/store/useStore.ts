@@ -43,6 +43,7 @@ const defaultUserProfile: UserProfile = {
   resume: '',
   selfIntroduction: '',
   targetPosition: '',
+  jobDescription: '',
   companyType: '',
   companyName: '',
   ...storedProfile,

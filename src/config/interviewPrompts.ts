@@ -1,5 +1,6 @@
 import type { Agent, InterviewMessage, UserProfile } from '@/types'
 import { PERSONALITY_MAP } from './personalities'
+import { formatJDSection } from './prompts'
 
 function getPersonalityDesc(agent: Agent): string {
   return PERSONALITY_MAP.get(agent.personality)?.description ?? ''
@@ -49,8 +50,7 @@ export function buildOpeningMessage(
 ): string {
   return `面试开始了。你是这场面试的HR负责人。在场的面试官有：${interviewerRoster(agents)}。
 
-候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）${userProfile.targetPosition ? `的「${userProfile.targetPosition}」岗位` : ''}。
-
+候选人应聘的是${userProfile.companyName}（${userProfile.companyType}行业）${userProfile.targetPosition ? `的「${userProfile.targetPosition}」岗位` : ''}。${formatJDSection(userProfile.jobDescription)}
 之前简历筛选的总经理结论：
 ${gmSummary}
 
@@ -148,8 +148,7 @@ export function buildEvaluationPrompt(
   return `以下是完整的面试对话记录：
 ${history}
 
-候选人应聘的岗位：${userProfile.targetPosition || '未指定'}
-
+候选人应聘的岗位：${userProfile.targetPosition || '未指定'}${formatJDSection(userProfile.jobDescription)}
 ${agent.name}，面试结束了。请从你${agent.roleLabel}的角度，对这位候选人给出简短评价：
 - 候选人表现出的优势和不足（各1-2点）
 - 你觉得这人行不行，给个明确态度

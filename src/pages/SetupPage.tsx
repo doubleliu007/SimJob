@@ -39,6 +39,8 @@ export default function SetupPage() {
   const [resume, setResume] = useState(userProfile.resume)
   const [selfIntro, setSelfIntro] = useState(userProfile.selfIntroduction)
   const [targetPosition, setTargetPosition] = useState(userProfile.targetPosition ?? '')
+  const [jobDescription, setJobDescription] = useState(userProfile.jobDescription ?? '')
+  const [showJD, setShowJD] = useState(!!userProfile.jobDescription)
   const [companyType, setCompanyType] = useState(
     userProfile.companyType || COMPANY_TYPES[0].value
   )
@@ -57,6 +59,7 @@ export default function SetupPage() {
       resume,
       selfIntroduction: selfIntro,
       targetPosition,
+      jobDescription,
       companyType,
       companyName: finalCompanyName,
     })
@@ -146,6 +149,41 @@ export default function SetupPage() {
           value={targetPosition}
           onChange={(e) => setTargetPosition(e.target.value)}
         />
+      </div>
+
+      {/* Job Description (optional, collapsible) */}
+      <div className="mb-6">
+        <button
+          type="button"
+          onClick={() => setShowJD(!showJD)}
+          className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2 group"
+        >
+          <svg
+            className={`w-4 h-4 text-slate-400 transition-transform ${showJD ? 'rotate-90' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          职位描述（JD）
+          <span className="text-xs font-normal text-slate-400">
+            选填，粘贴目标岗位的 JD 可让面试更有针对性；不填会自动生成
+          </span>
+        </button>
+        {showJD && (
+          <>
+            <textarea
+              className="w-full h-36 px-4 py-3 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white"
+              placeholder={"例如：\n岗位职责：负责公司核心产品的前端开发…\n任职要求：3年以上前端开发经验，熟悉 React/Vue…"}
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              {jobDescription.length} 字
+            </p>
+          </>
+        )}
       </div>
 
       {/* Company Type */}

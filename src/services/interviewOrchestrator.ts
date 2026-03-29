@@ -7,8 +7,8 @@ import type {
   UserProfile,
 } from '@/types'
 import { chat } from './llm'
-import { buildCompanyContextPrompt } from '@/config/prompts'
-import { loadFromStorage } from '@/utils/storage'
+import { buildCompanyContextPrompt, buildJobDescriptionPrompt } from '@/config/prompts'
+import { loadFromStorage, saveToStorage } from '@/utils/storage'
 import {
   buildEvaluationPrompt,
   buildFinalSummaryPrompt,
@@ -133,6 +133,7 @@ export class InterviewOrchestrator {
     try {
       callbacks.onStatusChange('opening')
       this.companyContext = await this.generateCompanyContext()
+      await this.ensureJobDescription()
 
       const hr = agents.find((a) => a.role === 'hr') ?? agents[0]
       callbacks.onCurrentSpeaker(hr.id)
@@ -174,42 +175,67 @@ export class InterviewOrchestrator {
   async submitUserAnswer(answer: string): Promise<void> {
     if (this.stopped) return
 
+    const userMsg = createInterviewMessage(
+      'user_answer',
+      answer,
+      'questioning'
+    )
+    this.messages.push(userMsg)
+    this.callbacks.onMessage(userMsg)
+
+    this.callbacks.onStatusChange('moderator_deciding')
+
+    let decision: { type: 'continue' | 'next' | 'end'; agentId?: string; topic?: string }
     try {
-      const userMsg = createInterviewMessage(
-        'user_answer',
-        answer,
+      decision = await this.moderatorDecide()
+    } catch (err: unknown) {
+      console.warn('[interviewOrchestrator] 主持人决策失败，回退到等待用户:', err)
+      const noticeMsg = createInterviewMessage(
+        'system_notice',
+        '（系统提示：面试官响应异常，请再次回答或点击结束面试）',
         'questioning'
       )
-      this.messages.push(userMsg)
-      this.callbacks.onMessage(userMsg)
+      this.messages.push(noticeMsg)
+      this.callbacks.onMessage(noticeMsg)
+      this.callbacks.onCurrentSpeaker(null)
+      this.callbacks.onStatusChange('waiting_for_user')
+      return
+    }
 
-      this.callbacks.onStatusChange('moderator_deciding')
-
-      const decision = await this.moderatorDecide()
-
-      if (decision.type === 'end') {
+    if (decision.type === 'end') {
+      try {
         await this.doEvaluation()
-        return
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        this.callbacks.onError(msg)
       }
+      return
+    }
 
-      const nextAgent = this.agents.find((a) => a.id === decision.agentId)
-      if (!nextAgent) {
+    const nextAgent = this.agents.find((a) => a.id === decision.agentId)
+    if (!nextAgent) {
+      try {
         await this.doEvaluation()
-        return
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        this.callbacks.onError(msg)
       }
+      return
+    }
 
-      const isContinuation = decision.type === 'continue'
+    const isContinuation = decision.type === 'continue'
 
-      if (nextAgent.id === this.lastInterviewerId) {
-        this.consecutiveCount++
-      } else {
-        this.consecutiveCount = 1
-      }
-      this.lastInterviewerId = nextAgent.id
+    if (nextAgent.id === this.lastInterviewerId) {
+      this.consecutiveCount++
+    } else {
+      this.consecutiveCount = 1
+    }
+    this.lastInterviewerId = nextAgent.id
 
-      this.callbacks.onStatusChange('questioning')
-      this.callbacks.onCurrentSpeaker(nextAgent.id)
+    this.callbacks.onStatusChange('questioning')
+    this.callbacks.onCurrentSpeaker(nextAgent.id)
 
+    try {
       const systemPrompt = buildInterviewSystemPrompt(
         nextAgent,
         this.userProfile.companyName,
@@ -242,14 +268,27 @@ export class InterviewOrchestrator {
       this.callbacks.onCurrentSpeaker(null)
       this.callbacks.onStatusChange('waiting_for_user')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      this.callbacks.onError(msg)
+      console.warn('[interviewOrchestrator] 面试官提问生成失败，回退到等待用户:', err)
+      const noticeMsg = createInterviewMessage(
+        'system_notice',
+        `（系统提示：${nextAgent.name} 的提问生成失败，请再次回答或点击结束面试）`,
+        'questioning'
+      )
+      this.messages.push(noticeMsg)
+      this.callbacks.onMessage(noticeMsg)
+      this.callbacks.onCurrentSpeaker(null)
+      this.callbacks.onStatusChange('waiting_for_user')
     }
   }
 
   async endInterview(): Promise<void> {
     this.stopped = true
-    await this.doEvaluation()
+    try {
+      await this.doEvaluation()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      this.callbacks.onError(msg)
+    }
   }
 
   private async generateCompanyContext(): Promise<string> {
@@ -265,6 +304,29 @@ export class InterviewOrchestrator {
       userMessage,
       maxTokens: 600,
     })
+  }
+
+  private async ensureJobDescription(): Promise<void> {
+    if (this.userProfile.jobDescription) return
+
+    const cached = loadFromStorage<string>('jobDescription')
+    if (cached) {
+      this.userProfile = { ...this.userProfile, jobDescription: cached }
+      return
+    }
+
+    const { systemPrompt, userMessage } = buildJobDescriptionPrompt(
+      this.userProfile.targetPosition,
+      this.userProfile.companyName,
+      this.userProfile.companyType
+    )
+    const generatedJD = await chat(this.apiConfig, {
+      systemPrompt,
+      userMessage,
+      maxTokens: 300,
+    })
+    this.userProfile = { ...this.userProfile, jobDescription: generatedJD }
+    saveToStorage('jobDescription', generatedJD)
   }
 
   private async moderatorDecide(): Promise<{
@@ -297,65 +359,95 @@ export class InterviewOrchestrator {
     for (const agent of this.agents) {
       this.callbacks.onCurrentSpeaker(agent.id)
 
-      const systemPrompt = buildInterviewSystemPrompt(
-        agent,
+      try {
+        const systemPrompt = buildInterviewSystemPrompt(
+          agent,
+          this.userProfile.companyName,
+          this.userProfile.companyType,
+          this.companyContext,
+          this.gmSummary
+        )
+
+        const evalUserMsg = buildEvaluationPrompt(
+          agent,
+          this.messages,
+          this.userProfile
+        )
+
+        const evalContent = await chat(this.apiConfig, {
+          systemPrompt,
+          userMessage: evalUserMsg,
+          maxTokens: 800,
+        })
+
+        evaluations.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          agentRole: agent.roleLabel,
+          content: evalContent,
+        })
+
+        const evalMsg = createInterviewMessage(
+          'system_notice',
+          evalContent,
+          'evaluating',
+          agent
+        )
+        this.messages.push(evalMsg)
+        this.callbacks.onMessage(evalMsg)
+      } catch (err: unknown) {
+        console.warn(`[interviewOrchestrator] ${agent.name} 评估失败，已跳过:`, err)
+        const fallbackContent = `（${agent.name} 的评估生成失败，已自动跳过）`
+        evaluations.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          agentRole: agent.roleLabel,
+          content: fallbackContent,
+        })
+        const fallbackMsg = createInterviewMessage(
+          'system_notice',
+          fallbackContent,
+          'evaluating',
+          agent
+        )
+        this.messages.push(fallbackMsg)
+        this.callbacks.onMessage(fallbackMsg)
+      }
+    }
+
+    const summaryAgent = this.agents.find((a) => a.role === 'dept_head') ?? this.agents[0]
+    this.callbacks.onCurrentSpeaker(summaryAgent.id)
+
+    let summaryContent: string
+    let passed: boolean
+
+    try {
+      const summarySystemPrompt = buildInterviewSystemPrompt(
+        summaryAgent,
         this.userProfile.companyName,
         this.userProfile.companyType,
         this.companyContext,
         this.gmSummary
       )
 
-      const evalUserMsg = buildEvaluationPrompt(
-        agent,
-        this.messages,
-        this.userProfile
+      const summaryUserMsg = buildFinalSummaryPrompt(
+        summaryAgent,
+        evaluations,
+        this.messages
       )
 
-      const evalContent = await chat(this.apiConfig, {
-        systemPrompt,
-        userMessage: evalUserMsg,
-        maxTokens: 800,
+      summaryContent = await chat(this.apiConfig, {
+        systemPrompt: summarySystemPrompt,
+        userMessage: summaryUserMsg,
+        maxTokens: 1024,
       })
 
-      evaluations.push({
-        agentId: agent.id,
-        agentName: agent.name,
-        agentRole: agent.roleLabel,
-        content: evalContent,
-      })
-
-      const evalMsg = createInterviewMessage(
-        'system_notice',
-        evalContent,
-        'evaluating',
-        agent
-      )
-      this.messages.push(evalMsg)
-      this.callbacks.onMessage(evalMsg)
+      passed = parsePassed(summaryContent)
+    } catch (err: unknown) {
+      console.warn('[interviewOrchestrator] 最终总结生成失败:', err)
+      summaryContent = '（最终总结生成失败，无法给出最终判断）'
+      passed = false
     }
-
-    const summaryAgent = this.agents.find((a) => a.role === 'dept_head') ?? this.agents[0]
-    this.callbacks.onCurrentSpeaker(summaryAgent.id)
-
-    const summarySystemPrompt = buildInterviewSystemPrompt(
-      summaryAgent,
-      this.userProfile.companyName,
-      this.userProfile.companyType,
-      this.companyContext,
-      this.gmSummary
-    )
-
-    const summaryUserMsg = buildFinalSummaryPrompt(
-      summaryAgent,
-      evaluations,
-      this.messages
-    )
-
-    const summaryContent = await chat(this.apiConfig, {
-      systemPrompt: summarySystemPrompt,
-      userMessage: summaryUserMsg,
-      maxTokens: 1024,
-    })
 
     const summaryMsg = createInterviewMessage(
       'system_notice',
@@ -365,8 +457,6 @@ export class InterviewOrchestrator {
     )
     this.messages.push(summaryMsg)
     this.callbacks.onMessage(summaryMsg)
-
-    const passed = parsePassed(summaryContent)
 
     this.callbacks.onCurrentSpeaker(null)
     this.callbacks.onStatusChange('finished')

@@ -12,10 +12,12 @@ import {
   buildFirstRoundUserMessage,
   buildFreeDiscussionUserMessage,
   buildHRSuggestionUserMessage,
+  buildJobDescriptionPrompt,
   buildModeratorPickMessage,
   buildSummaryUserMessage,
   buildSystemPrompt,
 } from '@/config/prompts'
+import { saveToStorage } from '@/utils/storage'
 import { ROLE_CONFIGS } from '@/config/roles'
 
 let messageCounter = 0
@@ -90,12 +92,13 @@ export interface OrchestratorCallbacks {
 
 export async function runDiscussion(
   agents: Agent[],
-  userProfile: UserProfile,
+  originalUserProfile: UserProfile,
   apiConfig: ApiConfig,
   callbacks: OrchestratorCallbacks
 ): Promise<void> {
   const allMessages: ChatMessage[] = []
   let companyContext = ''
+  let userProfile = originalUserProfile
 
   async function generateCompanyContext(): Promise<string> {
     const { systemPrompt, userMessage } = buildCompanyContextPrompt(
@@ -167,9 +170,24 @@ export async function runDiscussion(
   }
 
   try {
-    // === Phase 0: Generate Company Context ===
+    // === Phase 0: Generate Company Context & Job Description ===
     companyContext = await generateCompanyContext()
     callbacks.onCompanyContext?.(companyContext)
+
+    if (!userProfile.jobDescription) {
+      const { systemPrompt: jdSys, userMessage: jdMsg } = buildJobDescriptionPrompt(
+        userProfile.targetPosition,
+        userProfile.companyName,
+        userProfile.companyType
+      )
+      const generatedJD = await chat(apiConfig, {
+        systemPrompt: jdSys,
+        userMessage: jdMsg,
+        maxTokens: 300,
+      })
+      userProfile = { ...userProfile, jobDescription: generatedJD }
+      saveToStorage('jobDescription', generatedJD)
+    }
 
     // === Phase 1: First Round ===
     callbacks.onPhaseChange('first_round')
@@ -177,8 +195,19 @@ export async function runDiscussion(
 
     for (const agent of ordered) {
       if (callbacks.shouldStop()) break
-      const userMsg = buildFirstRoundUserMessage(agent, userProfile, agents, allMessages)
-      await agentSpeak(agent, userMsg, 'first_round', 1024)
+      try {
+        const userMsg = buildFirstRoundUserMessage(agent, userProfile, agents, allMessages)
+        await agentSpeak(agent, userMsg, 'first_round', 1024)
+      } catch (err: unknown) {
+        console.warn(`[orchestrator] ${agent.name} 首轮发言失败，已跳过:`, err)
+        const skipMsg = createMessage(
+          agent,
+          `（${agent.name} 的发言生成失败，已自动跳过）`,
+          'first_round'
+        )
+        allMessages.push(skipMsg)
+        callbacks.onMessage(skipMsg)
+      }
     }
 
     if (callbacks.shouldStop()) {
@@ -195,46 +224,55 @@ export async function runDiscussion(
     const maxRounds = 20
     const spokenInRound = new Set<string>()
 
+    let consecutiveErrors = 0
+    const maxConsecutiveErrors = 3
+
     for (let round = 0; round < maxRounds; round++) {
       if (callbacks.shouldStop()) break
+      if (consecutiveErrors >= maxConsecutiveErrors) break
 
-      // Moderator decides who speaks next and what to discuss
-      const { nextId, shouldEnd, topic } = await moderatorPick(moderator, lastSpeaker)
+      try {
+        const { nextId, shouldEnd, topic } = await moderatorPick(moderator, lastSpeaker)
 
-      if (shouldEnd) break
+        if (shouldEnd) break
 
-      let nextAgent: Agent | undefined
-      if (nextId) {
-        nextAgent = agents.find((a) => a.id === nextId)
-      }
-
-      if (!nextAgent) {
-        const candidates = agents.filter(
-          (a) => a.id !== moderator.id && a.id !== lastSpeaker.id && !spokenInRound.has(a.id)
-        )
-        if (candidates.length === 0) {
-          spokenInRound.clear()
-          const fallback = agents.filter(
-            (a) => a.id !== moderator.id && a.id !== lastSpeaker.id
-          )
-          nextAgent = fallback[Math.floor(Math.random() * fallback.length)]
-        } else {
-          nextAgent = candidates[Math.floor(Math.random() * candidates.length)]
+        let nextAgent: Agent | undefined
+        if (nextId) {
+          nextAgent = agents.find((a) => a.id === nextId)
         }
+
+        if (!nextAgent) {
+          const candidates = agents.filter(
+            (a) => a.id !== moderator.id && a.id !== lastSpeaker.id && !spokenInRound.has(a.id)
+          )
+          if (candidates.length === 0) {
+            spokenInRound.clear()
+            const fallback = agents.filter(
+              (a) => a.id !== moderator.id && a.id !== lastSpeaker.id
+            )
+            nextAgent = fallback[Math.floor(Math.random() * fallback.length)]
+          } else {
+            nextAgent = candidates[Math.floor(Math.random() * candidates.length)]
+          }
+        }
+
+        if (!nextAgent) break
+
+        spokenInRound.add(nextAgent.id)
+
+        const userMsg = buildFreeDiscussionUserMessage(
+          nextAgent,
+          agents,
+          allMessages,
+          topic
+        )
+        await agentSpeak(nextAgent, userMsg, 'free_discussion', 1024)
+        lastSpeaker = nextAgent
+        consecutiveErrors = 0
+      } catch (err: unknown) {
+        consecutiveErrors++
+        console.warn(`[orchestrator] 自由讨论第 ${round + 1} 轮失败 (${consecutiveErrors}/${maxConsecutiveErrors}):`, err)
       }
-
-      if (!nextAgent) break
-
-      spokenInRound.add(nextAgent.id)
-
-      const userMsg = buildFreeDiscussionUserMessage(
-        nextAgent,
-        agents,
-        allMessages,
-        topic
-      )
-      await agentSpeak(nextAgent, userMsg, 'free_discussion', 1024)
-      lastSpeaker = nextAgent
     }
 
     await doSummaryAndSuggestions()
@@ -244,22 +282,42 @@ export async function runDiscussion(
   }
 
   async function doSummaryAndSuggestions() {
+    let summaryContent = ''
+    let passed = false
+    let hrContent = ''
+
     // === Phase 3: GM Summary ===
     callbacks.onPhaseChange('summary')
     const gms = getGeneralManagers(agents)
     const summaryGM = gms[0]
-    const summaryMsg = buildSummaryUserMessage(summaryGM, allMessages)
-    const summaryResult = await agentSpeak(summaryGM, summaryMsg, 'summary', 2048)
-
-    const passed = parsePassed(summaryResult.content)
+    try {
+      const summaryMsg = buildSummaryUserMessage(summaryGM, allMessages)
+      const summaryResult = await agentSpeak(summaryGM, summaryMsg, 'summary', 2048)
+      summaryContent = summaryResult.content
+      passed = parsePassed(summaryContent)
+    } catch (err: unknown) {
+      console.warn('[orchestrator] 总结阶段失败:', err)
+      summaryContent = '（总结生成失败，无法给出最终判断）'
+      const fallbackMsg = createMessage(summaryGM, summaryContent, 'summary')
+      allMessages.push(fallbackMsg)
+      callbacks.onMessage(fallbackMsg)
+    }
 
     // === Phase 4: Senior HR Suggestions ===
     callbacks.onPhaseChange('suggestion')
     const seniorHR = getSeniorHR(agents) ?? agents.find((a) => a.role === 'hr')!
-    const hrMsg = buildHRSuggestionUserMessage(seniorHR, userProfile, allMessages)
-    const hrResult = await agentSpeak(seniorHR, hrMsg, 'suggestion', 2048)
+    try {
+      const hrMsg = buildHRSuggestionUserMessage(seniorHR, userProfile, allMessages)
+      const hrResult = await agentSpeak(seniorHR, hrMsg, 'suggestion', 2048)
+      hrContent = hrResult.content
+    } catch (err: unknown) {
+      console.warn('[orchestrator] HR 建议阶段失败:', err)
+      hrContent = '（HR 建议生成失败）'
+      const fallbackMsg = createMessage(seniorHR, hrContent, 'suggestion')
+      allMessages.push(fallbackMsg)
+      callbacks.onMessage(fallbackMsg)
+    }
 
-    // onFinished is called only AFTER both summary and HR suggestion are complete
-    callbacks.onFinished(passed, summaryResult.content, hrResult.content)
+    callbacks.onFinished(passed, summaryContent, hrContent)
   }
 }
